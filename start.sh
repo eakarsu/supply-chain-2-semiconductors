@@ -19,13 +19,11 @@ cd frontend && npm install && cd ..
 # Copy env
 cp .env backend/.env 2>/dev/null || true
 
-# Start backend
-cd backend && npm start &
-cd ..
+# Start backend (in background subshell — does not affect current dir)
+(cd backend && npm start) &
 
-# Start frontend
-cd frontend && npm run dev -- --port 5175 &
-cd ..
+# Start frontend (in background subshell)
+(cd frontend && npm run dev -- --port 5175) &
 
 echo ""
 echo "SemiChain running:"
