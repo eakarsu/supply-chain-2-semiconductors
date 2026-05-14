@@ -1,0 +1,12 @@
+Supply Chain 2.0 for Semiconductors
+By Diana Hu
+
+A single advanced AI chip goes through about 1,400 process steps, crosses a dozen countries, and takes five months to build. This supply chain is managed with spreadsheets, SAP, and phone calls.
+
+In 2021 a $300 chip held up a $50,000 car, and $210 billion in vehicles didn't get built. Companies could see their direct suppliers but had zero visibility into the second and third tiers. It's gotten worse. TSMC's advanced packaging is the single biggest bottleneck in AI compute right now, and NVIDIA has locked up over 60 percent of it. HBM memory is booked through 2026. Export controls change quarterly.
+
+At the same time the CHIPS Act is standing up new American fabs in Arizona, Texas, Ohio, and New York, each needing a supply chain built nearly from scratch.
+
+Almost none of the tooling you'd expect exists: real-time allocation tracking, multi-tier risk monitoring, export compliance. You need to understand wafer allocation and packaging constraints at a deep level to build this, which is exactly why it's a startup opportunity and not a feature inside SAP.
+
+If you're building supply chain 2.0 for chips, we'd love to talk.
