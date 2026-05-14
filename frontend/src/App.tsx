@@ -13,6 +13,10 @@ import AuditLogPage from './pages/AuditLogPage';
 import SampleDataPage from './pages/SampleDataPage';
 import Dashboard from './pages/Dashboard';
 import AICenter from './components/AICenter';
+import EccnClassifier from './pages/EccnClassifier';
+import SupplierGraph from './pages/SupplierGraph';
+import CowosCapacity from './pages/CowosCapacity';
+import HbmBookings from './pages/HbmBookings';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem('token');
@@ -38,6 +42,10 @@ export default function App() {
           <Route path="audit-log" element={<AuditLogPage />} />
           <Route path="sample-data" element={<SampleDataPage />} />
           <Route path="ai-center" element={<AICenter />} />
+          <Route path="eccn-classifier" element={<EccnClassifier />} />
+          <Route path="supplier-graph" element={<SupplierGraph />} />
+          <Route path="cowos-capacity" element={<CowosCapacity />} />
+          <Route path="hbm-bookings" element={<HbmBookings />} />
         </Route>
       </Routes>
     </BrowserRouter>

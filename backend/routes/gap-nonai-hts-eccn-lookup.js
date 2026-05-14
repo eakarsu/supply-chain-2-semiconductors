@@ -1,91 +1,83 @@
+// HTS / ECCN fuzzy lookup — non-AI reference search across both tables.
+//
+// Endpoints:
+//   GET /api/gap-nonai-hts-eccn-lookup/search?q=...&kind=eccn|hts|all
+//   GET /api/gap-nonai-hts-eccn-lookup/hts/:code
+//   GET /api/gap-nonai-hts-eccn-lookup/recent  (recent classifications)
+
 const express = require('express');
 const router = express.Router();
 const verifyToken = require('../middleware/auth');
 const pool = require('../db');
 
-// TODO: configure credentials (OPENROUTER_API_KEY) in .env
-// Feature: Customs / HTS / ECCN Lookup (gap-nonai) — auto-scaffolded from audit gap.
-// Project: supply-chain-2-semiconductors
-
 router.use(verifyToken);
 
-async function ensureTable() {
+router.get('/search', async (req, res) => {
   try {
-    await pool.query(`CREATE TABLE IF NOT EXISTS gap_features (
-      id SERIAL PRIMARY KEY,
-      feature_slug TEXT NOT NULL,
-      user_id INTEGER,
-      input JSONB,
-      output TEXT,
-      created_at TIMESTAMP DEFAULT NOW()
-    )`);
-  } catch (e) { /* swallow */ }
-}
+    const q = String(req.query.q || '').trim();
+    const kind = String(req.query.kind || 'all').toLowerCase();
+    if (!q) return res.json({ eccn: [], hts: [], total: 0 });
 
-async function callAI(userPrompt, systemPrompt = '') {
-  if (!process.env.OPENROUTER_API_KEY) return 'AI unavailable (no API key configured).';
-  try {
-    const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'http://localhost',
-        'X-Title': 'Customs / HTS / ECCN Lookup'
-      },
-      body: JSON.stringify({
-        model: process.env.OPENROUTER_MODEL || 'anthropic/claude-haiku-4.5',
-        messages: [
-          ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-          { role: 'user', content: userPrompt }
-        ]
-      })
-    });
-    const data = await resp.json();
-    return data.choices?.[0]?.message?.content || 'AI unavailable';
-  } catch (e) {
-    return `AI error: ${e.message}`;
-  }
-}
+    const like = `%${q}%`;
+    const out = { eccn: [], hts: [] };
 
-router.post('/', async (req, res) => {
-  try {
-    await ensureTable();
-    const body = req.body || {};
-    const systemPrompt = `You are an expert assistant for the "Customs / HTS / ECCN Lookup" feature in the supply-chain-2-semiconductors platform. Provide actionable, specific, structured output.`;
-    const userPrompt = `Feature: Customs / HTS / ECCN Lookup
-Kind: gap-nonai
-Context:
-${JSON.stringify(body, null, 2)}
-
-Please produce:
-1. Summary of what this feature should do given the input.
-2. Specific recommendations or computed outputs (3-7 bullets).
-3. Suggested next steps or data the operator should collect.
-4. Risk / caveat callouts.`;
-    const result = await callAI(userPrompt, systemPrompt);
-    try {
-      await pool.query(
-        'INSERT INTO gap_features (feature_slug, user_id, input, output) VALUES ($1,$2,$3,$4)',
-        ['hts-eccn-lookup', req.user?.id || null, body, result]
+    if (kind === 'all' || kind === 'eccn') {
+      const r = await pool.query(
+        `SELECT code, category, product_group, description, controls, license_required_to
+         FROM eccn_codes
+         WHERE code ILIKE $1
+            OR description ILIKE $1
+            OR controls ILIKE $1
+            OR license_required_to ILIKE $1
+         ORDER BY
+           CASE WHEN code ILIKE $2 THEN 0 ELSE 1 END,
+           code
+         LIMIT 25`,
+        [like, `${q}%`]
       );
-    } catch (e) { /* persistence optional */ }
-    res.json({ feature: 'Customs / HTS / ECCN Lookup', kind: 'gap-nonai', result });
+      out.eccn = r.rows;
+    }
+
+    if (kind === 'all' || kind === 'hts') {
+      const r = await pool.query(
+        `SELECT code, description, general_rate, special_rate, unit_of_measure
+         FROM hts_codes
+         WHERE code ILIKE $1
+            OR description ILIKE $1
+         ORDER BY
+           CASE WHEN code ILIKE $2 THEN 0 ELSE 1 END,
+           code
+         LIMIT 25`,
+        [like, `${q}%`]
+      );
+      out.hts = r.rows;
+    }
+
+    res.json({ ...out, total: out.eccn.length + out.hts.length });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.get('/history', async (req, res) => {
+router.get('/hts/:code', async (req, res) => {
   try {
-    await ensureTable();
-    const r = await pool.query(
-      'SELECT id, input, output, created_at FROM gap_features WHERE feature_slug=$1 ORDER BY created_at DESC LIMIT 25',
-      ['hts-eccn-lookup']
-    );
-    res.json({ history: r.rows });
+    const r = await pool.query('SELECT * FROM hts_codes WHERE code = $1', [req.params.code]);
+    if (!r.rows[0]) return res.status(404).json({ error: 'HTS not found' });
+    res.json(r.rows[0]);
   } catch (err) {
-    res.json({ history: [] });
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.get('/recent', async (_req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT id, eccn, hts, destination_country, license_required, classified_at
+       FROM classifications ORDER BY classified_at DESC LIMIT 25`
+    );
+    res.json(r.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

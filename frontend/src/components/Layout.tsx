@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { Cpu, Building2, Package, BarChart3, AlertTriangle, Factory, TrendingUp, Sparkles, LogOut, Search, Download, ScrollText, Database, LayoutDashboard } from 'lucide-react';
+import { Cpu, Building2, Package, BarChart3, AlertTriangle, Factory, TrendingUp, Sparkles, LogOut, Search, Download, ScrollText, Database, LayoutDashboard, ShieldCheck, Network, Layers, MemoryStick } from 'lucide-react';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -9,6 +9,10 @@ const navItems = [
   { to: '/risk-alerts', icon: AlertTriangle, label: 'Risk Alerts' },
   { to: '/fabs', icon: Factory, label: 'Fabs' },
   { to: '/intelligence', icon: TrendingUp, label: 'Market Intel' },
+  { to: '/supplier-graph', icon: Network, label: 'Supplier Graph' },
+  { to: '/cowos-capacity', icon: Layers, label: 'CoWoS Capacity' },
+  { to: '/hbm-bookings', icon: MemoryStick, label: 'HBM Bookings' },
+  { to: '/eccn-classifier', icon: ShieldCheck, label: 'ECCN Classifier' },
   { to: '/search', icon: Search, label: 'Search' },
   { to: '/export', icon: Download, label: 'Export' },
   { to: '/audit-log', icon: ScrollText, label: 'Audit Log' },

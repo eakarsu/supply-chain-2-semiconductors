@@ -1,91 +1,100 @@
+// CoWoS calendar — quarterly capacity & bookings view for visualization.
+//
+// Endpoints:
+//   GET /api/cf-cowos-calendar/calendar?from=2026Q1&to=2027Q2
+//   GET /api/cf-cowos-calendar/quarters
+
 const express = require('express');
 const router = express.Router();
 const verifyToken = require('../middleware/auth');
 const pool = require('../db');
 
-// TODO: configure credentials (OPENROUTER_API_KEY) in .env
-// Feature: CoWoS Allocation Calendar (cf) — auto-scaffolded from audit gap.
-// Project: supply-chain-2-semiconductors
-
 router.use(verifyToken);
 
-async function ensureTable() {
-  try {
-    await pool.query(`CREATE TABLE IF NOT EXISTS gap_features (
-      id SERIAL PRIMARY KEY,
-      feature_slug TEXT NOT NULL,
-      user_id INTEGER,
-      input JSONB,
-      output TEXT,
-      created_at TIMESTAMP DEFAULT NOW()
-    )`);
-  } catch (e) { /* swallow */ }
+function quarterKey(q) {
+  const m = /^(\d{4})Q([1-4])$/.exec(q || '');
+  if (!m) return 0;
+  return parseInt(m[1], 10) * 10 + parseInt(m[2], 10);
 }
 
-async function callAI(userPrompt, systemPrompt = '') {
-  if (!process.env.OPENROUTER_API_KEY) return 'AI unavailable (no API key configured).';
+router.get('/calendar', async (req, res) => {
   try {
-    const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': 'http://localhost',
-        'X-Title': 'CoWoS Allocation Calendar'
-      },
-      body: JSON.stringify({
-        model: process.env.OPENROUTER_MODEL || 'anthropic/claude-haiku-4.5',
-        messages: [
-          ...(systemPrompt ? [{ role: 'system', content: systemPrompt }] : []),
-          { role: 'user', content: userPrompt }
-        ]
-      })
+    const from = String(req.query.from || '2026Q1');
+    const to = String(req.query.to || '2027Q4');
+    const fromKey = quarterKey(from);
+    const toKey = quarterKey(to);
+    if (!fromKey || !toKey || fromKey > toKey) {
+      return res.status(400).json({ error: 'Invalid from/to (use e.g. 2026Q1)' });
+    }
+
+    const caps = await pool.query(`
+      SELECT pc.id, pc.technology, pc.quarter, pc.monthly_capacity_units,
+             pc.reserved_pct, pc.available_pct, pc.notes,
+             f.name AS fab_name, f.operator
+      FROM packaging_capacity pc
+      LEFT JOIN fabs f ON f.id = pc.fab_id
+      ORDER BY pc.quarter, pc.technology
+    `);
+    const bookings = await pool.query(`
+      SELECT pb.*, pc.technology, pc.quarter AS capacity_quarter
+      FROM packaging_bookings pb
+      JOIN packaging_capacity pc ON pc.id = pb.capacity_id
+    `);
+
+    const inRange = q => {
+      const k = quarterKey(q);
+      return k >= fromKey && k <= toKey;
+    };
+    const capsInRange = caps.rows.filter(c => inRange(c.quarter));
+    const bookingsInRange = bookings.rows.filter(b => inRange(b.delivery_quarter));
+
+    const byQuarter = {};
+    capsInRange.forEach(c => {
+      byQuarter[c.quarter] = byQuarter[c.quarter] || {};
+      byQuarter[c.quarter][c.technology] = byQuarter[c.quarter][c.technology] || {
+        technology: c.technology,
+        capacity_units: 0,
+        capacity_rows: [],
+        bookings: []
+      };
+      byQuarter[c.quarter][c.technology].capacity_units += Number(c.monthly_capacity_units || 0);
+      byQuarter[c.quarter][c.technology].capacity_rows.push(c);
     });
-    const data = await resp.json();
-    return data.choices?.[0]?.message?.content || 'AI unavailable';
-  } catch (e) {
-    return `AI error: ${e.message}`;
-  }
-}
+    bookingsInRange.forEach(b => {
+      const q = b.delivery_quarter;
+      const tech = b.technology;
+      if (!byQuarter[q]) byQuarter[q] = {};
+      if (!byQuarter[q][tech]) {
+        byQuarter[q][tech] = { technology: tech, capacity_units: 0, capacity_rows: [], bookings: [] };
+      }
+      byQuarter[q][tech].bookings.push(b);
+    });
 
-router.post('/', async (req, res) => {
-  try {
-    await ensureTable();
-    const body = req.body || {};
-    const systemPrompt = `You are an expert assistant for the "CoWoS Allocation Calendar" feature in the supply-chain-2-semiconductors platform. Provide actionable, specific, structured output.`;
-    const userPrompt = `Feature: CoWoS Allocation Calendar
-Kind: cf
-Context:
-${JSON.stringify(body, null, 2)}
+    const calendar = Object.keys(byQuarter).sort((a, b) => quarterKey(a) - quarterKey(b)).map(q => ({
+      quarter: q,
+      technologies: Object.values(byQuarter[q]).map(t => {
+        const booked = t.bookings.reduce((s, b) => s + Number(b.quantity_units || 0), 0);
+        return {
+          ...t,
+          booked_units: booked,
+          remaining_units: t.capacity_units - booked,
+          utilization_pct: t.capacity_units > 0 ? +(100 * booked / t.capacity_units).toFixed(1) : 0
+        };
+      })
+    }));
 
-Please produce:
-1. Summary of what this feature should do given the input.
-2. Specific recommendations or computed outputs (3-7 bullets).
-3. Suggested next steps or data the operator should collect.
-4. Risk / caveat callouts.`;
-    const result = await callAI(userPrompt, systemPrompt);
-    try {
-      await pool.query(
-        'INSERT INTO gap_features (feature_slug, user_id, input, output) VALUES ($1,$2,$3,$4)',
-        ['cowos-calendar', req.user?.id || null, body, result]
-      );
-    } catch (e) { /* persistence optional */ }
-    res.json({ feature: 'CoWoS Allocation Calendar', kind: 'cf', result });
+    res.json({ from, to, calendar });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-router.get('/history', async (req, res) => {
+router.get('/quarters', async (_req, res) => {
   try {
-    await ensureTable();
-    const r = await pool.query(
-      'SELECT id, input, output, created_at FROM gap_features WHERE feature_slug=$1 ORDER BY created_at DESC LIMIT 25',
-      ['cowos-calendar']
-    );
-    res.json({ history: r.rows });
+    const r = await pool.query('SELECT DISTINCT quarter FROM packaging_capacity ORDER BY quarter');
+    res.json(r.rows.map(x => x.quarter));
   } catch (err) {
-    res.json({ history: [] });
+    res.status(500).json({ error: err.message });
   }
 });
 
