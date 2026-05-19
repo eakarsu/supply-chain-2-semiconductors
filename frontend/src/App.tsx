@@ -17,6 +17,7 @@ import EccnClassifier from './pages/EccnClassifier';
 import SupplierGraph from './pages/SupplierGraph';
 import CowosCapacity from './pages/CowosCapacity';
 import HbmBookings from './pages/HbmBookings';
+import CustomViewsPage from './pages/CustomViewsPage';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = localStorage.getItem('token');
@@ -46,6 +47,7 @@ export default function App() {
           <Route path="supplier-graph" element={<SupplierGraph />} />
           <Route path="cowos-capacity" element={<CowosCapacity />} />
           <Route path="hbm-bookings" element={<HbmBookings />} />
+          <Route path="custom-views" element={<CustomViewsPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

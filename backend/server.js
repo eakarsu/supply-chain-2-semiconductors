@@ -38,3 +38,12 @@ app.use('/api/cf-cowos-calendar', require('./routes/cf-cowos-calendar'));
 app.use('/api/cf-eccn-live-update', require('./routes/cf-eccn-live-update'));
 app.use('/api/cf-disaster-risk-overlay', require('./routes/cf-disaster-risk-overlay'));
 app.use('/api/cf-auto-reshuffle-agent', require('./routes/cf-auto-reshuffle-agent'));
+
+// Custom views (4 endpoints) - mounted BEFORE 404 handler
+app.use('/api/custom-views', require('./routes/customViews'));
+
+// Health endpoint
+app.get('/api/health', (req, res) => res.json({ status: 'ok', service: 'semichain', ts: new Date().toISOString() }));
+
+// 404 handler (must be last)
+app.use('/api', (req, res) => res.status(404).json({ error: 'Not Found', path: req.originalUrl }));

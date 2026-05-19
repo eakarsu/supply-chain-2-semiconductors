@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { Cpu, Building2, Package, BarChart3, AlertTriangle, Factory, TrendingUp, Sparkles, LogOut, Search, Download, ScrollText, Database, LayoutDashboard, ShieldCheck, Network, Layers, MemoryStick } from 'lucide-react';
+import { Cpu, Building2, Package, BarChart3, AlertTriangle, Factory, TrendingUp, Sparkles, LogOut, Search, Download, ScrollText, Database, LayoutDashboard, ShieldCheck, Network, Layers, MemoryStick, Microscope } from 'lucide-react';
 
 const navItems = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -17,6 +17,7 @@ const navItems = [
   { to: '/export', icon: Download, label: 'Export' },
   { to: '/audit-log', icon: ScrollText, label: 'Audit Log' },
   { to: '/sample-data', icon: Database, label: 'Sample Data' },
+  { to: '/custom-views', icon: Microscope, label: 'Chip Supply Views' },
 ];
 
 export default function Layout() {
