@@ -112,3 +112,48 @@ All existing routes, pages, components, schema, and `api.ts`. Only `server.js`, 
 
 ### Log
 `/Users/erolakarsu/projects/_AUDIT/apply3_logs/dashboard_supply-chain-2-semiconductors.md`
+
+## Apply pass 7 (full backlog implementation)
+
+### Unaddressed backlog identified
+The 16 gap/cf feature pages under `frontend/src/pages/{Gap*,Cf*}.tsx` existed on disk and had backend routes mounted in `server.js` (`/api/gap-*`, `/api/cf-*`), but were **invisible to users** — neither routed in `App.tsx` nor linked from `Layout.tsx`. Wired them all up.
+
+### Items implemented (16)
+Gap features (11):
+- `/gap/cowos-tracker` → GapCowosTracker (POST /api/gap-ai-cowos-tracker)
+- `/gap/hbm-booking-monitor` → GapHbmBookingMonitor
+- `/gap/ear-eccn-classifier` → GapEarEccnClassifier
+- `/gap/tier-n-discovery` → GapTierNDiscovery
+- `/gap/wafer-yield-ml` → GapWaferYieldMl
+- `/gap/edi-sap-connector` → GapEdiSapConnector
+- `/gap/realtime-allocation` → GapRealtimeAllocation
+- `/gap/hts-eccn-lookup` → GapHtsEccnLookup
+- `/gap/factory-weather-feed` → GapFactoryWeatherFeed
+- `/gap/po-generation` → GapPoGeneration
+- `/gap/multiparty-dataroom` → GapMultipartyDataroom
+
+Custom (cf) features (5):
+- `/cf/tier-n-graph`, `/cf/cowos-calendar`, `/cf/eccn-live-update`, `/cf/disaster-risk-overlay`, `/cf/auto-reshuffle-agent`
+
+### Frontend changes
+- `App.tsx`: 16 imports added; 16 child routes added under the existing private Layout route (still BEFORE the catch-all on the Login route).
+- `Layout.tsx`: added two collapsible `<details>` nav groups ("Gap Features", "Custom Features") under the AI Center link, each rendered from a typed `gapNavItems` / `cfNavItems` array with `lucide-react` icons (Cloud, FileText, Activity, Globe, Workflow, Truck, Radar, CalendarClock, GitBranch, FlaskConical, Map, Bot, Layers, MemoryStick, ShieldCheck, Network) — all confirmed present in installed `lucide-react`.
+
+### Backend / DB
+- No backend file modified; all `/api/gap-*` and `/api/cf-*` mounts already exist in `server.js` BEFORE the `/api` 404 handler.
+- No schema migration needed; tables (`packaging_capacity`, `packaging_bookings`, `audit_log`, etc.) already exist with `CREATE TABLE IF NOT EXISTS`.
+
+### Verification
+- esbuild parse: `App.tsx OK`, `Layout.tsx OK` (stdin loader=tsx).
+- No `node --check` needed — no `.js` files modified this pass.
+- No new npm deps; no breaking changes; no existing route/page touched.
+
+### Untouched
+All existing backend routes, all 16 Gap*/Cf* page bodies (per "don't modify feature pages" memory), schema, seed, `api.ts`, AICenter, and all previously-wired pages.
+
+### Skipped per spec
+- AI route fallbacks (NEEDS-CREDS) — already correctly emit 503 via `aiError()`.
+- Server.js mount-order reshuffle (mounts appear after `app.listen` but work correctly in Node) — TOO-RISKY ordering change, advisory only.
+
+### Status
+PASS — all 16 previously-orphaned pages are now reachable from the sidebar and routable under `/gap/*` and `/cf/*`.

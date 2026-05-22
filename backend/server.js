@@ -41,6 +41,7 @@ app.use('/api/cf-auto-reshuffle-agent', require('./routes/cf-auto-reshuffle-agen
 
 // Custom views (4 endpoints) - mounted BEFORE 404 handler
 app.use('/api/custom-views', require('./routes/customViews'));
+app.use('/api/osat-slot-reservation', require('./routes/osatSlotReservation'));
 
 // Health endpoint
 app.get('/api/health', (req, res) => res.json({ status: 'ok', service: 'semichain', ts: new Date().toISOString() }));
