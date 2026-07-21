@@ -1,0 +1,33 @@
+services:
+  database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: semichain
+      POSTGRES_USER: semichain
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    volumes: [semichain-data:/var/lib/postgresql/data]
+    healthcheck: { test: ["CMD-SHELL", "pg_isready -U semichain"], interval: 5s, timeout: 3s, retries: 20 }
+  migrate:
+    build: ./backend
+    environment: { DATABASE_URL: "postgresql://semichain:${POSTGRES_PASSWORD}@database:5432/semichain" }
+    command: ["node", "scripts/migrate.js", "up"]
+    depends_on: { database: { condition: service_healthy } }
+  api:
+    build: ./backend
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: "postgresql://semichain:${POSTGRES_PASSWORD}@database:5432/semichain"
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      CORS_ORIGINS: ${CORS_ORIGINS:?CORS_ORIGINS is required}
+      AUTHORITATIVE_SOURCE_BINDINGS: ${AUTHORITATIVE_SOURCE_BINDINGS:?AUTHORITATIVE_SOURCE_BINDINGS is required}
+      ENABLE_AI: "false"
+      ENABLE_DEMO_ROUTES: "false"
+    depends_on: { migrate: { condition: service_completed_successfully } }
+    read_only: true
+    tmpfs: [/tmp]
+  ui:
+    build: ./frontend
+    ports: ["5175:8080"]
+    depends_on: [api]
+volumes:
+  semichain-data:

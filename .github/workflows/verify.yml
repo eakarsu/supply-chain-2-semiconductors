@@ -1,0 +1,45 @@
+name: verify
+on: [push, pull_request]
+permissions: { contents: read }
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: semichain, POSTGRES_PASSWORD: test-password, POSTGRES_DB: semichain_test }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U semichain" --health-interval 5s --health-timeout 3s --health-retries 20
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://semichain:test-password@localhost:5432/semichain_test
+      CORS_ORIGINS: http://localhost:5175
+      AUTHORITATIVE_SOURCE_BINDINGS: plm:BOM,mdm:SUPPLIER,erp:INVENTORY|WORK_ORDER,schedule:SCHEDULE,qms:QUALITY,iot:TELEMETRY
+      MAX_TELEMETRY_AGE_SECONDS: 300
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: "**/package-lock.json" }
+      - name: Generate ephemeral authentication secret
+        run: echo "JWT_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+      - run: npm ci
+        working-directory: backend
+      - name: Prove reversible migration
+        run: npm run migrate && npm run migrate:down && npm run migrate
+        working-directory: backend
+      - run: npm run test:unit -- --coverage
+        working-directory: backend
+      - run: npm run test:integration
+        working-directory: backend
+      - run: npm run test:e2e
+        working-directory: backend
+      - run: npm audit --audit-level=low
+        working-directory: backend
+      - run: npm ci && npm run build && npm audit --audit-level=low
+        working-directory: frontend
+      - name: Secret scan
+        uses: gitleaks/gitleaks-action@v2
+        env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
+      - run: docker build -t semichain-api ./backend && docker build -t semichain-ui ./frontend

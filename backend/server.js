@@ -1,50 +1,47 @@
-require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env'), quiet: true });
 const express = require('express');
 const cors = require('cors');
-const app = express();
+const helmet = require('helmet');
+const db = require('./db');
+const { DomainError } = require('./src/domain');
+const { list, validateRuntime } = require('./src/runtime');
 
-app.use(cors());
-app.use(express.json());
+function createApp() {
+  validateRuntime();
+  const app = express();
+  const allowedOrigins = list('CORS_ORIGINS');
+  app.disable('x-powered-by');
+  app.use(helmet({ contentSecurityPolicy: false }));
+  app.use(cors({ credentials: false, origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin) || (process.env.NODE_ENV !== 'production' && /^http:\/\/(localhost|127\.0\.0\.1):\d+$/.test(origin))) return callback(null, true);
+    callback(new DomainError(403, 'ORIGIN_NOT_ALLOWED', 'Origin is not allowed'));
+  } }));
+  app.use(express.json({ limit: '256kb', strict: true }));
+  app.get('/api/health', (_req, res) => res.json({ status: 'ok', service: 'semichain-traceability' }));
+  app.get('/api/ready', async (_req, res) => {
+    try { await db.query('SELECT 1 FROM semichain_migrations LIMIT 1'); res.json({ status: 'ready' }); }
+    catch { res.status(503).json({ status: 'not_ready' }); }
+  });
+  app.use('/api/auth', require('./routes/auth'));
+  app.use('/api/traceability', require('./routes/traceability'));
+  app.use('/api', (req, res) => res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Unsupported API route' } }));
+  app.use((error, _req, res, _next) => {
+    if (error instanceof DomainError) return res.status(error.status).json({ error: { code: error.code, message: error.message, details: error.details, eventId: error.eventId } });
+    if (error?.type === 'entity.too.large') return res.status(413).json({ error: { code: 'PAYLOAD_TOO_LARGE', message: 'Request body exceeds 256kb' } });
+    console.error('Unhandled request failure', { name: error?.name, code: error?.code });
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Request failed' } });
+  });
+  return app;
+}
 
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/ai', require('./routes/ai'));
-app.use('/api/suppliers', require('./routes/suppliers'));
-app.use('/api/components', require('./routes/components'));
-app.use('/api/allocations', require('./routes/allocations'));
-app.use('/api/risk-alerts', require('./routes/risk_alerts'));
-app.use('/api/fabs', require('./routes/fabs'));
-app.use('/api/intelligence', require('./routes/intelligence'));
-app.use('/api/audit-log', require('./routes/audit_log'));
-app.use('/api/export', require('./routes/export'));
-app.use('/api/search', require('./routes/search'));
-app.use('/api/admin', require('./routes/sample_data'));
-app.use('/api/dashboard', require('./routes/dashboard'));
+function start() {
+  const app = createApp(); const port = Number(process.env.PORT || 3015);
+  const host = process.env.HOST || '127.0.0.1';
+  const server = app.listen(port, host, () => console.log(`SemiChain traceability API listening on ${host}:${port}`));
+  const shutdown = () => server.close(() => db.end().finally(() => process.exit(0)));
+  process.once('SIGTERM', shutdown); process.once('SIGINT', shutdown);
+  return server;
+}
 
-const PORT = process.env.PORT || 3015;
-app.listen(PORT, () => console.log(`SemiChain backend running on port ${PORT}`));
-app.use('/api/gap-ai-cowos-tracker', require('./routes/gap-ai-cowos-tracker'));
-app.use('/api/gap-ai-hbm-booking-monitor', require('./routes/gap-ai-hbm-booking-monitor'));
-app.use('/api/gap-ai-ear-eccn-classifier', require('./routes/gap-ai-ear-eccn-classifier'));
-app.use('/api/gap-ai-tier-n-discovery', require('./routes/gap-ai-tier-n-discovery'));
-app.use('/api/gap-ai-wafer-yield-ml', require('./routes/gap-ai-wafer-yield-ml'));
-app.use('/api/gap-nonai-edi-sap-connector', require('./routes/gap-nonai-edi-sap-connector'));
-app.use('/api/gap-nonai-realtime-allocation', require('./routes/gap-nonai-realtime-allocation'));
-app.use('/api/gap-nonai-hts-eccn-lookup', require('./routes/gap-nonai-hts-eccn-lookup'));
-app.use('/api/gap-nonai-factory-weather-feed', require('./routes/gap-nonai-factory-weather-feed'));
-app.use('/api/gap-nonai-po-generation', require('./routes/gap-nonai-po-generation'));
-app.use('/api/gap-nonai-multiparty-dataroom', require('./routes/gap-nonai-multiparty-dataroom'));
-app.use('/api/cf-tier-n-graph', require('./routes/cf-tier-n-graph'));
-app.use('/api/cf-cowos-calendar', require('./routes/cf-cowos-calendar'));
-app.use('/api/cf-eccn-live-update', require('./routes/cf-eccn-live-update'));
-app.use('/api/cf-disaster-risk-overlay', require('./routes/cf-disaster-risk-overlay'));
-app.use('/api/cf-auto-reshuffle-agent', require('./routes/cf-auto-reshuffle-agent'));
-
-// Custom views (4 endpoints) - mounted BEFORE 404 handler
-app.use('/api/custom-views', require('./routes/customViews'));
-app.use('/api/osat-slot-reservation', require('./routes/osatSlotReservation'));
-
-// Health endpoint
-app.get('/api/health', (req, res) => res.json({ status: 'ok', service: 'semichain', ts: new Date().toISOString() }));
-
-// 404 handler (must be last)
-app.use('/api', (req, res) => res.status(404).json({ error: 'Not Found', path: req.originalUrl }));
+if (require.main === module) start();
+module.exports = { createApp, start };

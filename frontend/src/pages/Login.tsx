@@ -21,18 +21,13 @@ export default function Login() {
     finally { setLoading(false); }
   };
 
-  const handleDemo = () => {
-    setEmail('admin@demo.com'); setPassword('demo123');
-    setTimeout(() => { document.getElementById('login-form')?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true })); }, 100);
-  };
-
   return (
     <div className="min-h-screen bg-gray-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-amber-500 rounded-2xl mb-4"><Cpu className="w-8 h-8 text-gray-950" /></div>
           <h1 className="text-3xl font-bold text-white">SemiChain</h1>
-          <p className="text-gray-400 mt-2">Semiconductor Supply Chain Intelligence</p>
+          <p className="text-gray-400 mt-2">Authenticated semiconductor lot traceability</p>
         </div>
         <div className="bg-gray-900 rounded-2xl p-8 border border-gray-800">
           <form id="login-form" onSubmit={handleSubmit} className="space-y-4">
@@ -41,7 +36,7 @@ export default function Login() {
             {error && <p className="text-red-400 text-sm">{error}</p>}
             <button type="submit" disabled={loading} className="w-full bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold py-2.5 rounded-lg transition-colors disabled:opacity-50">{loading ? 'Signing in...' : 'Sign In'}</button>
           </form>
-          <button onClick={handleDemo} className="mt-3 w-full bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium py-2.5 rounded-lg transition-colors border border-gray-700">Demo Login</button>
+          <p className="mt-4 text-xs text-gray-500">Accounts are provisioned by an administrator. No demo credentials are enabled.</p>
         </div>
       </div>
     </div>
