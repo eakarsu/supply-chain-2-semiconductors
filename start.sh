@@ -3,6 +3,7 @@ set -euo pipefail
 
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$project_dir"
+if [[ -f .env ]]; then set -a; source .env; set +a; fi
 
 for dependency_dir in backend/node_modules frontend/node_modules; do
   [[ -d "$dependency_dir" ]] || { echo "Missing $dependency_dir; install locked dependencies before startup." >&2; exit 1; }
@@ -21,7 +22,10 @@ for port in "$api_port" "$ui_port"; do
   fi
 done
 
-cleanup() { kill "$api_pid" "$ui_pid" 2>/dev/null || true; }
+cleanup() {
+  kill -TERM "${api_pid:-}" "${ui_pid:-}" 2>/dev/null || true
+  wait "${api_pid:-}" "${ui_pid:-}" 2>/dev/null || true
+}
 trap cleanup EXIT INT TERM
 env HOST="$api_host" PORT="$api_port" npm --prefix backend start & api_pid=$!
 npm --prefix frontend run preview -- --host "$ui_host" --port "$ui_port" --strictPort & ui_pid=$!

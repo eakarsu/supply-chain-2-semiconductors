@@ -23,6 +23,7 @@ function createApp() {
     catch { res.status(503).json({ status: 'not_ready' }); }
   });
   app.use('/api/auth', require('./routes/auth'));
+  app.use('/api/runtime-ai', require('./routes/runtime-ai'));
   app.use('/api/traceability', require('./routes/traceability'));
   app.use('/api', (req, res) => res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Unsupported API route' } }));
   app.use((error, _req, res, _next) => {
