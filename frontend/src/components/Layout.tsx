@@ -1,11 +1,21 @@
 import { Outlet, useNavigate } from 'react-router-dom';
+import SectionSidebar from './SectionSidebar';
 import { Activity, Cpu, LogOut, ShieldCheck } from 'lucide-react';
 
 export default function Layout() {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const logout = () => { localStorage.removeItem('token'); localStorage.removeItem('user'); navigate('/login'); };
-  return <div className="min-h-screen bg-slate-950 text-slate-100">
+  return <div className="min-h-screen bg-slate-950 text-slate-100 codex-section-shell">
+    <SectionSidebar title="SemiChain Control Tower" items={[
+      { href: '#trace-overview', label: 'Overview' },
+      { href: '#trace-ingest', label: 'Ingest Event' },
+      { href: '#trace-plan', label: 'Plan Allocation' },
+      { href: '#trace-sources', label: 'Source Freshness' },
+      { href: '#trace-lots', label: 'Lots' },
+      { href: '#trace-exceptions', label: 'Exceptions' },
+    ]} />
+    <div className="codex-section-content">
     <header className="border-b border-slate-800 bg-slate-900/90 px-6 py-4">
       <div className="mx-auto flex max-w-7xl items-center justify-between">
         <div className="flex items-center gap-3"><span className="rounded-xl bg-amber-400 p-2"><Cpu className="h-5 w-5 text-slate-950" /></span><div><div className="font-semibold">SemiChain Control Tower</div><div className="text-xs text-slate-400">Receive → inspect → approve → allocate → replan</div></div></div>
@@ -13,5 +23,6 @@ export default function Layout() {
       </div>
     </header>
     <main className="mx-auto max-w-7xl p-6"><Outlet /></main>
+    </div>
   </div>;
 }
