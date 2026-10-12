@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
+import AIStudio from './pages/AIStudio';
 import Login from './pages/Login';
 import TraceabilityPage from './pages/TraceabilityPage';
 
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
           <Route index element={<Navigate to="/control-tower" replace />} />
           <Route path="control-tower" element={<TraceabilityPage />} />
+          <Route path="ai-studio" element={<AIStudio />} />
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

@@ -8,12 +8,13 @@ export default function Layout() {
   const logout = () => { localStorage.removeItem('token'); localStorage.removeItem('user'); navigate('/login'); };
   return <div className="min-h-screen bg-slate-950 text-slate-100 codex-section-shell">
     <SectionSidebar title="SemiChain Control Tower" items={[
-      { href: '#trace-overview', label: 'Overview' },
-      { href: '#trace-ingest', label: 'Ingest Event' },
-      { href: '#trace-plan', label: 'Plan Allocation' },
-      { href: '#trace-sources', label: 'Source Freshness' },
-      { href: '#trace-lots', label: 'Lots' },
-      { href: '#trace-exceptions', label: 'Exceptions' },
+      { href: '/ai-studio', label: 'AI Studio' },
+      { href: '/control-tower#trace-overview', label: 'Overview' },
+      { href: '/control-tower#trace-ingest', label: 'Ingest Event' },
+      { href: '/control-tower#trace-plan', label: 'Plan Allocation' },
+      { href: '/control-tower#trace-sources', label: 'Source Freshness' },
+      { href: '/control-tower#trace-lots', label: 'Lots' },
+      { href: '/control-tower#trace-exceptions', label: 'Exceptions' },
     ]} />
     <div className="codex-section-content">
     <header className="border-b border-slate-800 bg-slate-900/90 px-6 py-4">

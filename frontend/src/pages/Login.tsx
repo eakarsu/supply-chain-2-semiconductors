@@ -4,6 +4,7 @@ import { api } from '../api';
 import { Cpu } from 'lucide-react';
 
 export default function Login() {
+  const demoAvailable = import.meta.env.VITE_ENABLE_DEMO_CREDENTIAL_AUTOFILL === 'true' && Boolean(import.meta.env.VITE_DEMO_EMAIL && import.meta.env.VITE_DEMO_PASSWORD);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -36,16 +37,16 @@ export default function Login() {
             {error && <p className="text-red-400 text-sm">{error}</p>}
             <button
               type="button"
-              onClick={() => { setEmail(import.meta.env.VITE_DEMO_EMAIL || ''); setPassword(import.meta.env.VITE_DEMO_PASSWORD || ''); }}
-              disabled={!import.meta.env.VITE_DEMO_EMAIL || !import.meta.env.VITE_DEMO_PASSWORD}
-              aria-label="Auto Fill Demo Credentials"
+              onClick={() => { setEmail(import.meta.env.VITE_DEMO_EMAIL || ''); setPassword(import.meta.env.VITE_DEMO_PASSWORD || ''); setError(''); }}
+              disabled={loading || !demoAvailable}
+              aria-label="Fill Demo Credentials"
               style={{ width: '100%', marginBottom: '12px', padding: '10px 14px', borderRadius: '8px', border: '1px solid currentColor', background: 'transparent', cursor: 'pointer' }}
             >
-              Auto Fill Demo Credentials
+              Fill Demo Credentials
             </button>
             <button type="submit" disabled={loading} className="w-full bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold py-2.5 rounded-lg transition-colors disabled:opacity-50">{loading ? 'Signing in...' : 'Sign In'}</button>
           </form>
-          <p className="mt-4 text-xs text-gray-500">Accounts are provisioned by an administrator. No demo credentials are enabled.</p>
+          <p className="mt-4 text-xs text-gray-500">{demoAvailable ? 'Demo credentials are configured. Fill them, then select Sign In.' : 'Accounts are provisioned by an administrator. Demo credentials are not available in this session.'}</p>
         </div>
       </div>
     </div>

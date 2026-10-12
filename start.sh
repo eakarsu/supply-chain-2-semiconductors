@@ -105,6 +105,6 @@ cleanup() {
 trap cleanup EXIT INT TERM
 npm --prefix frontend run build
 env HOST="$api_host" PORT="$api_port" npm --prefix backend start & api_pid=$!
-npm --prefix frontend run preview -- --host "$ui_host" --port "$ui_port" --strictPort & ui_pid=$!
+env VITE_API_TARGET="http://$api_host:$api_port" npm --prefix frontend run preview -- --host "$ui_host" --port "$ui_port" --strictPort & ui_pid=$!
 while kill -0 "$api_pid" 2>/dev/null && kill -0 "$ui_pid" 2>/dev/null; do sleep 1; done
 exit 1
